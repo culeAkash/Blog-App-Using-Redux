@@ -1,57 +1,56 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit'
+import { createSlice, nanoid, createAsyncThunk } from "@reduxjs/toolkit";
+import { sub } from 'date-fns';
 
-import { sub } from 'date-fns'
+import axios from 'axios'
 
 
-const initialState = [
-    {
-        id: '1',
-        title: 'Learning Redux Toolkit',
-        content: "I'm learning how to use the redux toolkit library. It's a great way to manage state in react app",
-        date: sub(new Date(), { minutes: 10 }).toISOString(),
-        reactions: {
-            thumbsup: 0,
-            wow: 0,
-            heart: 0,
-            rocket: 0,
-            coffee: 0
-        }
-    },
-    {
-        id: '2',
-        title: "Understanding React's Context API",
-        content: "Context API is a great alternative for redux",
-        date: sub(new Date(), { minutes: 5 }).toISOString(),
-        reactions: {
-            thumbsup: 0,
-            wow: 0,
-            heart: 0,
-            rocket: 0,
-            coffee: 0
-        }
+const POST_URL = 'https://jsonplaceholder.typicode.com/posts'
+
+const initialState = {
+    posts: [],
+    status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed
+    error: null
+}
+
+
+export const fetchPosts = createAsyncThunk('posts/fetchPosts', async () => {
+    try {
+        const response = await axios.get(POST_URL)
+        return response.data
+    } catch (error) {
+        return error.message
     }
-]
+})
 
-// * We can change the state directly by pushing as redux uses emmer.js in the background and push is equialent to creating new state
 
-export const postsSlice = createSlice({
+export const addNewPost = createAsyncThunk('posts/addNewPost', async (initialPost) => {
+    try {
+        const response = await axios.post(POST_URL, initialPost)
+        return response.data
+    } catch (error) {
+        return error.message
+    }
+})
+
+
+const postsSlice = createSlice({
     name: 'posts',
     initialState,
     reducers: {
-        postsAdded: {
-            reducer: (state, { payload }) => {
-                state.push(payload)
+        postAdded: {
+            reducer(state, action) {
+                state.posts.push(action.payload)
             },
-            prepare: (title, content, userId) => {
+            prepare(title, body, userId) {
                 return {
                     payload: {
                         id: nanoid(),
                         title,
-                        content,
-                        userId,
+                        body,
                         date: new Date().toISOString(),
+                        userId,
                         reactions: {
-                            thumbsup: 0,
+                            thumbsUp: 0,
                             wow: 0,
                             heart: 0,
                             rocket: 0,
@@ -61,23 +60,62 @@ export const postsSlice = createSlice({
                 }
             }
         },
-        reactionAdded: (state, { payload }) => {
-            const { postId, reaction } = payload
-
-            const exisitingPost = state.find(post => post.id === postId)
-
-            if (exisitingPost) {
-                exisitingPost.reactions[reaction]++;
+        reactionAdded(state, action) {
+            const { postId, reaction } = action.payload
+            const existingPost = state.posts.find(post => post.id === postId)
+            if (existingPost) {
+                existingPost.reactions[reaction]++
             }
         }
+    },
+    extraReducers(builder) {
+        builder
+            .addCase(fetchPosts.pending, (state, { payload }) => {
+                state.status = 'loading'
+            })
+            .addCase(fetchPosts.fulfilled, (state, { payload }) => {
+                state.status = 'succeeded'
+                let min = 1
+                //adding date and reactions as api doesn't contain it
+                const loadedPosts = payload.map(post => {
+                    post.date = sub(new Date(), { minutes: min++ }).toISOString()
+                    post.reactions = {
+                        thumbsUp: 0,
+                        wow: 0,
+                        heart: 0,
+                        rocket: 0,
+                        coffee: 0
+                    }
+                    console.log(post);
+                    return post
+                })
+                //add to the state
+                state.posts = loadedPosts
+            })
+            .addCase(fetchPosts.rejected, (state, { error }) => {
+                state.status = 'failed'
+                state.error = error
+            })
+            .addCase(addNewPost.fulfilled, (state, { payload }) => {
+                payload.userId = Number(payload.userId)
+                payload.date = new Date().toISOString()
+                payload.reactions = {
+                    thumbsUp: 0,
+                    wow: 0,
+                    heart: 0,
+                    rocket: 0,
+                    coffee: 0
+                }
+
+                state.posts.push(payload)
+            })
     }
 })
 
+export const selectAllPosts = (state) => state.posts.posts;
+export const getPostsStatus = (state) => state.posts.status;
+export const getPostsError = (state) => state.posts.error
 
-// if shape of the state ever changes, we have to change it here only
-export const selectAllPosts = (state) => state.posts;
-
-export const { postsAdded, reactionAdded } = postsSlice.actions
-
+export const { postAdded, reactionAdded } = postsSlice.actions
 
 export default postsSlice.reducer
