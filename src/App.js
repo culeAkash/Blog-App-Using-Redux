@@ -2,10 +2,12 @@ import PostsList from "./features/posts/PostsList";
 import AddPostForm from "./features/posts/AddPostForm";
 
 
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from "./components/Layout";
 import SinglePostPage from "./features/posts/SinglePostPage";
 import EditPostForm from "./features/posts/EditPostForm";
+import UsersList from "./features/users/UsersList";
+import UserPage from "./features/users/UserPage";
 
 function App() {
   return (
@@ -21,9 +23,15 @@ function App() {
           <Route path="edit/:postId" element={<EditPostForm />} />
         </Route>
 
+        <Route path="user">
+          <Route index element={<UsersList />} />
+          <Route path=":userId" element={<UserPage />} />
+        </Route>
+
+        {/* catch all - replace with 404 component if you want */}
+        <Route path="*" element={<Navigate to="/" replace />} />
 
       </Route>
-
     </Routes>
   );
 }

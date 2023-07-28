@@ -1,4 +1,4 @@
-import { createSlice, nanoid, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, nanoid, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
 import { sub } from 'date-fns';
 
 import axios from 'axios'
@@ -9,7 +9,8 @@ const POST_URL = 'https://jsonplaceholder.typicode.com/posts'
 const initialState = {
     posts: [],
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed
-    error: null
+    error: null,
+    count: 0
 }
 
 
@@ -61,35 +62,15 @@ const postsSlice = createSlice({
     name: 'posts',
     initialState,
     reducers: {
-        postAdded: {
-            reducer(state, action) {
-                state.posts.push(action.payload)
-            },
-            prepare(title, body, userId) {
-                return {
-                    payload: {
-                        id: nanoid(),
-                        title,
-                        body,
-                        date: new Date().toISOString(),
-                        userId,
-                        reactions: {
-                            thumbsUp: 0,
-                            wow: 0,
-                            heart: 0,
-                            rocket: 0,
-                            coffee: 0
-                        }
-                    }
-                }
-            }
-        },
         reactionAdded(state, action) {
             const { postId, reaction } = action.payload
             const existingPost = state.posts.find(post => post.id === postId)
             if (existingPost) {
                 existingPost.reactions[reaction]++
             }
+        },
+        increaseCount: (state, action) => {
+            state.count = state.count + 1
         }
     },
     extraReducers(builder) {
@@ -179,6 +160,16 @@ export const getPostsError = (state) => state.posts.error
 export const selectpostById = (state, postId) =>
     state.posts.posts.find(post => post.id === postId)
 
-export const { postAdded, reactionAdded } = postsSlice.actions
+
+//memoized version for getting posts for a user
+export const selectPostsByUser = createSelector(
+    [selectAllPosts, (state, userId) => userId],
+    (posts, userId) => posts.filter(post => post.userId === userId)
+)
+
+
+export const selectCount = (state) => state.posts.count
+
+export const { increaseCount, reactionAdded } = postsSlice.actions
 
 export default postsSlice.reducer

@@ -7,7 +7,7 @@ import ReactionButtons from "./ReactionButtons";
 
 import { Link } from 'react-router-dom';
 
-function PostsExcerpt({ post }) {
+let PostsExcerpt = ({ post }) => {
 
     console.log(post);
 
@@ -24,5 +24,8 @@ function PostsExcerpt({ post }) {
         </article>
     )
 }
+
+// Now the Postsexcerpt component will only be re-rendered if the prop passed to it is changed
+PostsExcerpt = React.memo(PostsExcerpt)
 
 export default PostsExcerpt
